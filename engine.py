@@ -1,100 +1,96 @@
 import joblib
 import pandas as pd
 import os
-import requests
-import json
+import google.generativeai as genai
+import PIL.Image
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class IntelliQueueEngine:
     def __init__(self):
-        # ML model load karna
-        # Ensure 'models/queue_model.pkl' exists in your repo
+        # 1. API Configuration
+        self.api_key = os.environ.get("GOOGLE_API_KEY")
+        if self.api_key:
+            genai.configure(api_key=self.api_key)
+        
+        # 2. ML Model Load (Fallback logic ke saath)
         try:
             self.model = joblib.load('models/queue_model.pkl')
         except:
-            self.model = None # Fallback if model missing during deploy
-            
-        # API Key load karna (Streamlit secrets or .env)
-        self.api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            self.model = None 
 
-    def get_prediction(self, hour, day, staff, crowd, context="Normal Day"):
-        # 1. ML Prediction (Base Calculation)
-        if self.model:
-            input_data = pd.DataFrame([[hour, day, staff, crowd]], 
-                                     columns=['hour_of_day', 'day_of_week', 'current_staff', 'current_crowd'])
-            base_wait = self.model.predict(input_data)[0]
-        else:
-            # Simple fallback logic if ML model file is not found
-            base_wait = (crowd / (staff + 1)) * 5 
-
-        # --- ⚡ SMART LOGIC LAYER (Updated for Realism) ---
-        if context == "Normal Day":
-            base_wait = base_wait * 0.8  
-        elif context == "Holiday Rush":
-            base_wait = base_wait * 1.5  
-        elif context == "Staff Shortage":
-            base_wait = base_wait * 1.3  
-        elif context == "Rainy Weather":
-            base_wait = base_wait * 1.1  
-        elif context == "Technical Issue":
-            base_wait = (base_wait * 2.0) + 10.0 
-
-        # --- SANITY CHECK (Low Crowd Logic) ---
-        if crowd < 5 and context != "Technical Issue":
-            max_logical_wait = crowd * 4  
-            if base_wait > max_logical_wait:
-                base_wait = max_logical_wait
+    def get_prediction(self, hour, day, staff, crowd, context="Normal Day", image_file=None):
         
+        # --- Step 1: Base ML Calculation ---
+        base_wait = 5.0 
+        if self.model:
+            try:
+                input_data = pd.DataFrame([[hour, day, staff, crowd]], 
+                                         columns=['hour_of_day', 'day_of_week', 'current_staff', 'current_crowd'])
+                base_wait = self.model.predict(input_data)[0]
+            except:
+                base_wait = (crowd / (staff + 1)) * 4
+
+        # Context Logic
+        if context == "Technical Issue":
+            base_wait = (base_wait * 2.0) + 10.0
+        elif context == "Staff Shortage":
+            base_wait = base_wait * 1.3
+            
         final_wait_time = round(base_wait, 1)
 
-        # 2. Gemini API Call (Using gemini-flash-lite-latest for high quota)
-        model_name = "gemini-flash-lite-latest"
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+        # --- Step 2: Gemini Multimodal Reasoning ---
         
-        prompt = f"""
-        Act as an Autonomous Retail Reasoning Engine for the Gemini 3 Action Era.
-        
-        Situation:
-        - Current Time: {hour}:00
-        - Staff Units: {staff}
-        - Crowd Density: {crowd} people
-        - Environmental Context: {context}
-        - ML Predicted Wait Time: {final_wait_time} minutes.
-
-        Please provide your analysis in the following structured format:
-
-        ### 🧠 Thought Signature (Spatial-Temporal Reasoning)
-        Briefly explain your "thinking process" on how the {context} and crowd density specifically impact the flow of customers. Mention cause and effect.
-
-        ### 📋 Manager's Action Plan (Thinking Levels)
-        - **Level 1 (Immediate - 5 mins):** One tactical action.
-        - **Level 2 (Short-term - 1 hour):** One operational adjustment.
-        - **Level 3 (Strategic - Long-term):** One suggestion to prevent future {context} issues.
-        
-        Keep it professional and concise.
-        """
-
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }]
-        }
-        
-        headers = {'Content-Type': 'application/json'}
-
         try:
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-            response_json = response.json()
+            # Hum 'gemini flash' use kar rahe hain jo Images dekh sakta hai
+            model = genai.GenerativeModel('gemini-2.0-flash-lite-preview-02-05')
             
-            # Extracting the AI text
-            if "candidates" in response_json:
-                reasoning = response_json['candidates'][0]['content']['parts'][0]['text']
+            # Base Prompt
+            prompt_text = f"""
+            Act as an Autonomous Retail Reasoning Engine (Gemini 3 Action Era).
+            
+            Data Inputs:
+            - Time: {hour}:00
+            - Context: {context}
+            - Predicted Wait: {final_wait_time} mins
+            - Staff Count: {staff}
+            """
+
+            # Agar Image hai, toh Prompt change hoga
+            if image_file:
+                prompt_text += """
+                \n[VISUAL ANALYSIS REQUIRED]
+                An image of the current queue (CCTV Snapshot) is provided. 
+                1. Analyze the crowd's visible sentiment (frustrated, calm, chaotic).
+                2. Identify any spatial bottlenecks visible in the scene.
+                3. Combine this visual insight with the data above.
+                """
+                content_input = [prompt_text, image_file] # List mein text + image dono jayenge
             else:
-                reasoning = f"⚠️ AI Reasoning Engine Offline (Error: {response_json.get('error', {}).get('message', 'Unknown')})"
+                prompt_text += "\nNo visual input provided. Base analysis on data only."
+                content_input = [prompt_text]
+
+            prompt_text += """
+            \nProvide output in this format:
+            ### 👁️ Visual & Spatial Analysis
+            (If image provided: Describe what you see in the queue regarding mood and density. If no image: State "Data-only analysis".)
+
+            ### 🧠 Thought Signature
+            Explain the cause-and-effect of the wait time based on inputs.
+
+            ### 📋 Manager's Action Plan
+            - **Level 1 (Immediate):** One quick fix.
+            - **Level 2 (Short-term):** One operational change.
+            - **Level 3 (Strategic):** One long-term prevention tip.
+            """
+
+            # API Call
+            response = model.generate_content(content_input)
+            reasoning = response.text
+            
         except Exception as e:
-            reasoning = f"⚠️ Connection Error: {str(e)}. Base ML prediction remains valid."
+            reasoning = f"⚠️ AI Analysis Failed: {str(e)}. ML Prediction is still valid."
 
         return final_wait_time, reasoning
 
