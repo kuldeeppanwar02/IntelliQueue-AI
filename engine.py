@@ -53,38 +53,29 @@ class IntelliQueueEngine:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         
         prompt = f"""
-        System: Queue Manager AI using Gemini 3.
-        Stats: Wait Time {base_wait:.1f} mins, Staff: {staff}, Crowd: {crowd}, Context: {context}.
-        Task: Explain the wait time calculation logic based on the context and suggest 1 fix.
-        """
+        Act as an Autonomous Retail Reasoning Engine for the Gemini 3 Action Era.
         
-        headers = {'Content-Type': 'application/json'}
-        data = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }]
-        }
+        Situation:
+        - Current Time: {hour}:00
+        - Staff on Duty: {staff}
+        - Current Crowd: {crowd} people
+        - Environmental Context: {context}
+        - ML Predicted Wait Time: {final_wait_time} minutes.
 
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            
-            if response.status_code == 200:
-                response_json = response.json()
-                if "candidates" in response_json and response_json["candidates"]:
-                    reasoning = response_json["candidates"][0]["content"]["parts"][0]["text"]
-                else:
-                    reasoning = "AI response format unexpected. Showing raw stats."
-            else:
-                reasoning = f"Server Error ({response.status_code}): {response.text}"
-                
-        except Exception as e:
-            reasoning = f"Connection failed: {str(e)}"
+        Please provide your analysis in the following structured format:
 
-        return {
-            "wait_time": round(base_wait, 1),
-            "reasoning": reasoning
+        ### 🧠 Thought Signature (Spatial-Temporal Reasoning)
+        Briefly explain your "thinking process" on how the {context} and crowd density specifically impact the flow of customers.
 
-        }
+        ### ⏳ Refined Prediction
+        Confirm if the {final_wait_time} mins is accurate or if context suggests a slight adjustment.
+
+        ### 📋 Manager's Action Plan (Thinking Levels)
+        - **Level 1 (Immediate):** One action to take in the next 5 minutes.
+        - **Level 2 (Short-term):** One action for the next hour.
+        - **Level 3 (Strategic):** One long-term suggestion to prevent this {context} issue.
+        """
+
 
 
 
