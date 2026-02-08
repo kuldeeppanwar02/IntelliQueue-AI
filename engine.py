@@ -44,7 +44,7 @@ class IntelliQueueEngine:
         
         try:
             # Hum 'gemini flash' use kar rahe hain jo Images dekh sakta hai
-            model = genai.GenerativeModel('gemini-2.0-flash-lite-preview-02-05')
+            model = genai.GenerativeModel('gemini-flash-lite-latest')
             
             # Base Prompt
             prompt_text = f"""
@@ -93,6 +93,7 @@ class IntelliQueueEngine:
             reasoning = f"⚠️ AI Analysis Failed: {str(e)}. ML Prediction is still valid."
 
         return final_wait_time, reasoning
+
 
 
 
