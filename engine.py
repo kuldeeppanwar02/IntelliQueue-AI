@@ -49,8 +49,8 @@ class IntelliQueueEngine:
         
         final_wait_time = round(base_wait, 1)
 
-        # 2. Gemini API Call (Using gemini-1.5-flash-lite for high quota)
-        model_name = "gemini-1.5-flash-lite"
+        # 2. Gemini API Call (Using gemini-flash-lite-latest for high quota)
+        model_name = "gemini-flash-lite-latest"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         
         prompt = f"""
@@ -97,6 +97,7 @@ class IntelliQueueEngine:
             reasoning = f"⚠️ Connection Error: {str(e)}. Base ML prediction remains valid."
 
         return final_wait_time, reasoning
+
 
 
 
