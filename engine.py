@@ -9,12 +9,10 @@ load_dotenv()
 
 class IntelliQueueEngine:
     def __init__(self):
-        # 1. API Configuration
         self.api_key = os.environ.get("GOOGLE_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
         
-        # 2. ML Model Load (Fallback logic ke saath)
         try:
             self.model = joblib.load('models/queue_model.pkl')
         except:
@@ -22,7 +20,7 @@ class IntelliQueueEngine:
 
     def get_prediction(self, hour, day, staff, crowd, context="Normal Day", image_file=None):
         
-        # --- Step 1: Base ML Calculation ---
+        # --- ML Prediction ---
         base_wait = 5.0 
         if self.model:
             try:
@@ -32,68 +30,71 @@ class IntelliQueueEngine:
             except:
                 base_wait = (crowd / (staff + 1)) * 4
 
-        # Context Logic
         if context == "Technical Issue":
             base_wait = (base_wait * 2.0) + 10.0
         elif context == "Staff Shortage":
             base_wait = base_wait * 1.3
+        elif context == "Rainy Weather":
+            base_wait = base_wait * 1.1
             
         final_wait_time = round(base_wait, 1)
 
-        # --- Step 2: Gemini Multimodal Reasoning ---
+        # --- Gemini Prompt Logic (Fixed for Time Mismatch) ---
+        reasoning = "AI analysis unavailable."
         
         try:
-            # Hum 'gemini flash' use kar rahe hain jo Images dekh sakta hai
             model = genai.GenerativeModel('gemini-flash-lite-latest')
             
-            # Base Prompt
-            prompt_text = f"""
-            Act as an Autonomous Retail Reasoning Engine (Gemini 3 Action Era).
+            # 🔥 CRITICAL CHANGE: 
+            # Hum AI ko bol rahe hain: "Ye ek RECORDED SNAPSHOT hai jo {hour}:00 baje liya gaya tha."
+            # Ab Gemini current time se confuse nahi hoga.
             
-            Data Inputs:
-            - Time: {hour}:00
-            - Context: {context}
+            prompt_text = f"""
+            Act as an Autonomous Retail Reasoning Engine.
+            
+            Situation Context:
+            You are analyzing a specific timeframe to assist store managers.
+            - Target Time of Analysis: {hour}:00 Hours (24h format)
+            - Staff Active: {staff}
             - Predicted Wait: {final_wait_time} mins
-            - Staff Count: {staff}
+            - Environmental Context: {context}
             """
 
-            # Agar Image hai, toh Prompt change hoga
+            content_input = [prompt_text]
+
             if image_file:
                 prompt_text += """
-                \n[VISUAL ANALYSIS REQUIRED]
-                An image of the current queue (CCTV Snapshot) is provided. 
-                1. Analyze the crowd's visible sentiment (frustrated, calm, chaotic).
-                2. Identify any spatial bottlenecks visible in the scene.
-                3. Combine this visual insight with the data above.
+                \n[VISUAL EVIDENCE PROVIDED]
+                A CCTV Snapshot corresponding to the Target Time ({hour}:00) is attached.
+                1. Analyze the crowd density and mood in the image.
+                2. Verify if the visual crowd matches the data input ({crowd} people).
+                3. Treat this image as the ground truth for that specific time.
                 """
-                content_input = [prompt_text, image_file] # List mein text + image dono jayenge
+                content_input.append(image_file)
             else:
-                prompt_text += "\nNo visual input provided. Base analysis on data only."
-                content_input = [prompt_text]
+                prompt_text += "\nNo visual input. Base analysis on data parameters only."
 
             prompt_text += """
-            \nProvide output in this format:
-            ### 👁️ Visual & Spatial Analysis
-            (If image provided: Describe what you see in the queue regarding mood and density. If no image: State "Data-only analysis".)
+            \nOutput Format:
+            ### 👁️ Visual & Temporal Analysis
+            (Confirm if the scene looks consistent with a busy/quiet period at {hour}:00).
 
-            ### 🧠 Thought Signature
-            Explain the cause-and-effect of the wait time based on inputs.
+            ### 🧠 Root Cause Diagnosis
+            Why is the wait time {final_wait_time} mins at this specific hour?
 
-            ### 📋 Manager's Action Plan
-            - **Level 1 (Immediate):** One quick fix.
-            - **Level 2 (Short-term):** One operational change.
-            - **Level 3 (Strategic):** One long-term prevention tip.
+            ### 📋 Action Plan (Time-Specific)
+            - **Immediate:** Action for {hour}:05.
+            - **Strategic:** Adjustment for this shift.
             """
-
-            # API Call
+            
+            content_input[0] = prompt_text
             response = model.generate_content(content_input)
             reasoning = response.text
             
         except Exception as e:
-            reasoning = f"⚠️ AI Analysis Failed: {str(e)}. ML Prediction is still valid."
+            reasoning = f"⚠️ AI Analysis Failed: {str(e)}. ML Prediction valid."
 
         return final_wait_time, reasoning
-
 
 
 
