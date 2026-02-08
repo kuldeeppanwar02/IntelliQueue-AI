@@ -14,7 +14,7 @@ st.markdown("""
 
 st.title("👁️ IntelliQueue AI: Vision & Reasoning")
 st.markdown("### *Multimodal Autonomous Agent for the Action Era*")
-st.caption("Powered by **Gemini 1.5 Flash** | Sees, Reasons, & Acts")
+st.caption("Powered by **Gemini Flash Latest** | Sees, Reasons, & Acts")
 
 # --- Sidebar ---
 st.sidebar.header("📍 Environment Data")
@@ -51,5 +51,6 @@ if st.button("🚀 Analyze Queue (Visual + Data)"):
 
 st.divider()
 st.caption("Built for Google DeepMind Gemini 3 Hackathon")
+
 
 
