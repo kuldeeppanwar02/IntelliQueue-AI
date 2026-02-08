@@ -49,7 +49,7 @@ class IntelliQueueEngine:
         # -------------------------------------
 
         # 2. Gemini 3 API Call (Using Requests for Stability)
-        model_name = "gemini-3-flash-preview"
+        model_name = "Gemini 1.5 Flash"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         
         prompt = f"""
@@ -83,4 +83,5 @@ class IntelliQueueEngine:
         return {
             "wait_time": round(base_wait, 1),
             "reasoning": reasoning
+
         }
