@@ -23,7 +23,7 @@ st.markdown("""
 # --- App Header ---
 st.title("👁️ IntelliQueue AI")
 st.markdown("### *Autonomous Retail Reasoning Engine*")
-st.caption("Real-world spatial reasoning powered by **Gemini 1.5 Flash**.")
+st.caption("Real-world spatial reasoning powered by **Gemini Flash Lite Latest**.")
 
 # --- Real-Time Logic & Default Settings ---
 # Capture current real-world time for default initialization
@@ -114,3 +114,4 @@ if st.button("🚀 Analyze Queue & Generate Action Plan"):
 # --- Footer ---
 st.divider()
 st.caption("Built for Google DeepMind Gemini 3 Hackathon | Action Era Track")
+
