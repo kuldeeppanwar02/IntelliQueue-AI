@@ -49,7 +49,7 @@ class IntelliQueueEngine:
         # -------------------------------------
 
         # 2. Gemini 3 API Call (Using Requests for Stability)
-        model_name = "Gemini 1.5 Flash"
+        model = genai.GenerativeModel("models/gemini-1.5-flash")
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         
         prompt = f"""
@@ -85,3 +85,4 @@ class IntelliQueueEngine:
             "reasoning": reasoning
 
         }
+
