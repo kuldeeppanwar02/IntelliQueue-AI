@@ -51,7 +51,7 @@ class IntelliQueueEngine:
         # --- Gemini Reasoning ---
         reasoning = "AI analysis unavailable."
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-flash-lite-latest')
             
             prompt_text = f"""
             Act as an Autonomous Retail Reasoning Engine.
@@ -125,6 +125,7 @@ class IntelliQueueEngine:
             
         except Exception as e:
             return f"Self-Correction Failed: {str(e)}"
+
 
 
 
